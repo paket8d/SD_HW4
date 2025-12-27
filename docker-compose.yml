@@ -1,0 +1,79 @@
+﻿services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sdhw4
+      POSTGRES_PASSWORD: sdhw4
+      POSTGRES_DB: sdhw4
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  orders-service:
+    build:
+      context: .
+      dockerfile: src/OrdersService/Dockerfile
+    image: sd_hw4-orders-service
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5001
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=sdhw4;Username=sdhw4;Password=sdhw4
+      Rabbit__Host: rabbitmq
+    depends_on:
+      - postgres
+      - rabbitmq
+    ports:
+      - "5001:5001"
+
+  payments-service:
+    build:
+      context: .
+      dockerfile: src/PaymentsService/Dockerfile
+    image: sd_hw4-payments-service
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5002
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=sdhw4;Username=sdhw4;Password=sdhw4
+      Rabbit__Host: rabbitmq
+    depends_on:
+      - postgres
+      - rabbitmq
+    ports:
+      - "5002:5002"
+
+  api-gateway:
+    build:
+      context: ./src/ApiGateway
+      dockerfile: Dockerfile
+    image: sd_hw4-api-gateway
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      Services__Orders: http://orders-service:5001
+      Services__Payments: http://payments-service:5002
+    
+    depends_on:
+      - orders-service
+      - payments-service
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: src/Frontend
+    ports:
+      - "3000:80"
+
+
+volumes:
+  pgdata:

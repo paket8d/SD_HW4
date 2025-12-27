@@ -1,0 +1,8 @@
+﻿bin
+obj
+.vs
+.idea
+**/bin
+**/obj
+Dockerfile
+

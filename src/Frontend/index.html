@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Microservices Shop</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .card { border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+        input { padding: 5px; margin-right: 5px; }
+        button { padding: 5px 10px; cursor: pointer; }
+        #log { white-space: pre-wrap; background: #f4f4f4; padding: 10px; border: 1px solid #ccc; max-height: 300px; overflow-y: auto; }
+        h3 { margin-top: 0; }
+        .row { display: flex; gap: 10px; align-items: center; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+<h1>🛒 Магазин Микросервисов</h1>
+
+<div class="card">
+    <h3>👤 Пользователь</h3>
+    <div class="row">
+        <input id="userId" placeholder="User ID (guid)" value="user-1" style="width: 200px;" />
+        <button onclick="createAccount()">➕ Создать аккаунт</button>
+        <button onclick="getBalance()">💰 Узнать баланс</button>
+    </div>
+</div>
+
+<div class="card">
+    <h3>💳 Пополнение</h3>
+    <div class="row">
+        <input id="amount" type="number" placeholder="Сумма" value="100" />
+        <button onclick="topUp()">📥 Пополнить</button>
+    </div>
+</div>
+
+<div class="card">
+    <h3>📦 Заказы</h3>
+    <div class="row">
+        <input id="orderAmount" type="number" placeholder="Стоимость" value="50" />
+        <button onclick="createOrder()">🛒 Создать заказ</button>
+        <button onclick="getOrders()">📋 Список заказов</button>
+    </div>
+</div>
+
+<h3>📜 Лог операций:</h3>
+<div id="log"></div>
+
+<script>
+    const GATEWAY_URL = 'http://localhost:8080';
+    const userIdInput = document.getElementById('userId');
+    const logDiv = document.getElementById('log');
+
+    function log(msg, data = null) {
+        const time = new Date().toLocaleTimeString();
+        let text = `[${time}] ${msg}`;
+        if (data) text += '\n' + JSON.stringify(data, null, 2);
+        logDiv.textContent = text + '\n' + '-'.repeat(40) + '\n' + logDiv.textContent;
+    }
+
+    async function createAccount() {
+        try {
+            const res = await fetch(`${GATEWAY_URL}/accounts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: userIdInput.value })
+            });
+            const data = await res.json(); // или res.text() если 201 без тела
+            log(`Создание аккаунта: ${res.status}`, data);
+        } catch (e) { log(`Ошибка: ${e}`); }
+    }
+
+    async function getBalance() {
+        try {
+            // GET /accounts?userId=...
+            const res = await fetch(`${GATEWAY_URL}/accounts?userId=${userIdInput.value}`);
+            if (res.ok) {
+                const data = await res.json();
+                log(`Баланс получен: ${res.status}`, data);
+            } else {
+                log(`Баланс не найден: ${res.status}`);
+            }
+        } catch (e) { log(`Ошибка: ${e}`); }
+    }
+
+    async function topUp() {
+        try {
+            const res = await fetch(`${GATEWAY_URL}/accounts/top-up`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: userIdInput.value, amount: parseFloat(document.getElementById('amount').value) })
+            });
+            const data = await res.json();
+            log(`Пополнение: ${res.status}`, data);
+        } catch (e) { log(`Ошибка: ${e}`); }
+    }
+
+    async function createOrder() {
+        try {
+            const res = await fetch(`${GATEWAY_URL}/orders`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: userIdInput.value, amount: parseFloat(document.getElementById('orderAmount').value) })
+            });
+            const data = await res.json();
+            log(`Заказ создан: ${res.status}`, data);
+        } catch (e) { log(`Ошибка: ${e}`); }
+    }
+
+    async function getOrders() {
+        try {
+            // GET /orders?userId=...
+            const res = await fetch(`${GATEWAY_URL}/orders?userId=${userIdInput.value}`);
+            if (res.ok) {
+                const data = await res.json();
+                log(`Список заказов: ${res.status}`, data);
+            } else {
+                log(`Заказы не найдены: ${res.status}`);
+            }
+        } catch (e) { log(`Ошибка: ${e}`); }
+    }
+</script>
+</body>
+</html>
